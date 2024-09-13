@@ -92,6 +92,12 @@ namespace Refit
         public Func<HttpResponseMessage, Task<Exception?>> ExceptionFactory { get; set; }
 
         /// <summary>
+        /// Supply a function to provide deserialization <see cref="Exception"/> based on <see cref="HttpResponseMessage"/>.
+        /// If function returns null - no exception is thrown.
+        /// </summary>
+        public Func<HttpResponseMessage, Task<Exception?>>? DeserializationExceptionFactory { get; set; }
+
+        /// <summary>
         /// Defines how requests' content should be serialized. (defaults to <see cref="SystemTextJsonContentSerializer"/>)
         /// </summary>
         public IHttpContentSerializer ContentSerializer { get; set; }
