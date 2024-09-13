@@ -10,12 +10,13 @@ namespace Refit
 {
     class RequestBuilderImplementation<TApi>(RefitSettings? refitSettings = null)
         : RequestBuilderImplementation(typeof(TApi), refitSettings),
-            IRequestBuilder<TApi> { }
+            IRequestBuilder<TApi>
+    { }
 
     partial class RequestBuilderImplementation : IRequestBuilder
     {
-        static readonly QueryAttribute DefaultQueryAttribute = new ();
-        static readonly Uri BaseUri = new ("http://api");
+        static readonly QueryAttribute DefaultQueryAttribute = new();
+        static readonly Uri BaseUri = new("http://api");
         readonly Dictionary<string, List<RestMethodInfoInternal>> interfaceHttpMethods;
         readonly ConcurrentDictionary<
             CloseGenericMethodKey,
@@ -356,14 +357,19 @@ namespace Refit
                         catch (Exception ex)
                         {
                             //if an error occured while attempting to deserialize return the wrapped ApiException
-                            e = await ApiException.Create(
-                                "An error occured deserializing the response.",
-                                resp.RequestMessage!,
-                                resp.RequestMessage!.Method,
-                                resp,
-                                settings,
-                                ex
-                            );
+                            if (settings.DeserializationExceptionFactory != null)
+                                e = await settings.DeserializationExceptionFactory(resp, ex).ConfigureAwait(false);
+                            else
+                            {
+                                e = await ApiException.Create(
+                                    "An error occured deserializing the response.",
+                                    resp.RequestMessage!,
+                                    resp.RequestMessage!.Method,
+                                    resp,
+                                    settings,
+                                    ex
+                                );
+                            }
                         }
 
                         return ApiResponse.Create<T, TBody>(
@@ -387,14 +393,19 @@ namespace Refit
                         }
                         catch (Exception ex)
                         {
-                            throw await ApiException.Create(
-                                "An error occured deserializing the response.",
-                                resp.RequestMessage!,
-                                resp.RequestMessage!.Method,
-                                resp,
-                                settings,
-                                ex
-                            );
+                            if (settings.DeserializationExceptionFactory != null)
+                                throw await settings.DeserializationExceptionFactory(resp, ex).ConfigureAwait(false);
+                            else
+                            {
+                                throw await ApiException.Create(
+                                    "An error occured deserializing the response.",
+                                    resp.RequestMessage!,
+                                    resp.RequestMessage!.Method,
+                                    resp,
+                                    settings,
+                                    ex
+                                );
+                            }
                         }
                     }
                 }
@@ -746,7 +757,7 @@ namespace Refit
 
                 if (queryParamsToAdd.Count != 0)
                 {
-                    uri.Query = CreateQueryString(queryParamsToAdd);;
+                    uri.Query = CreateQueryString(queryParamsToAdd); ;
                 }
                 else
                 {
@@ -991,7 +1002,7 @@ namespace Refit
                 foreach (var p in settings.HttpRequestMessageOptions)
                 {
 #if NET6_0_OR_GREATER
-                        ret.Options.Set(new HttpRequestOptionsKey<object>(p.Key), p.Value);
+                    ret.Options.Set(new HttpRequestOptionsKey<object>(p.Key), p.Value);
 #else
                     ret.Properties.Add(p);
 #endif
@@ -1015,16 +1026,16 @@ namespace Refit
 
             // Always add the top-level type of the interface to the properties
 #if NET6_0_OR_GREATER
-                ret.Options.Set(
-                    new HttpRequestOptionsKey<Type>(HttpRequestMessageOptions.InterfaceType),
-                    TargetType
-                );
-                ret.Options.Set(
-                    new HttpRequestOptionsKey<RestMethodInfo>(
-                        HttpRequestMessageOptions.RestMethodInfo
-                    ),
-                    restMethod.ToRestMethodInfo()
-                );
+            ret.Options.Set(
+                new HttpRequestOptionsKey<Type>(HttpRequestMessageOptions.InterfaceType),
+                TargetType
+            );
+            ret.Options.Set(
+                new HttpRequestOptionsKey<RestMethodInfo>(
+                    HttpRequestMessageOptions.RestMethodInfo
+                ),
+                restMethod.ToRestMethodInfo()
+            );
 #else
             ret.Properties[HttpRequestMessageOptions.InterfaceType] = TargetType;
             ret.Properties[HttpRequestMessageOptions.RestMethodInfo] =
@@ -1148,9 +1159,9 @@ namespace Refit
             var firstQuery = true;
             foreach (var queryParam in queryParamsToAdd)
             {
-                if(queryParam is not { Key: not null, Value: not null })
+                if (queryParam is not { Key: not null, Value: not null })
                     continue;
-                if(!firstQuery)
+                if (!firstQuery)
                 {
                     // for all items after the first we add a & symbol
                     vsb.Append('&');
